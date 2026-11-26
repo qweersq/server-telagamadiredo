@@ -2515,7 +2515,7 @@ DROP TABLE IF EXISTS `refresh_tokens`;
 CREATE TABLE `refresh_tokens` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL COMMENT 'ID user pemilik refresh token',
-  `refresh_token` text NOT NULL COMMENT 'Refresh token untuk auto refresh access token',
+  `refresh_token` varchar(512) NOT NULL COMMENT 'Refresh token untuk auto refresh access token',
   `device_type` enum('web','mobile') NOT NULL DEFAULT 'web' COMMENT 'Tipe device: web atau mobile',
   `device_id` varchar(255) DEFAULT NULL COMMENT 'ID device (optional, untuk tracking device spesifik)',
   `expires_at` datetime NOT NULL COMMENT 'Tanggal kadaluarsa refresh token',
@@ -2523,7 +2523,7 @@ CREATE TABLE `refresh_tokens` (
   `updatedAt` datetime NOT NULL DEFAULT current_timestamp(),
   `deletedAt` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_refresh_tokens_token` (`refresh_token`) USING HASH,
+  UNIQUE KEY `idx_refresh_tokens_token` (`refresh_token`),
   KEY `idx_refresh_tokens_user_id` (`user_id`),
   KEY `idx_refresh_tokens_user_device` (`user_id`,`device_type`),
   CONSTRAINT `refresh_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
