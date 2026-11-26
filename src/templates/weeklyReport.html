@@ -1,0 +1,102 @@
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    color: #2d2d2d;
+    line-height: 1.6;
+  }
+  h2 {
+    color: #444;
+  }
+  h3 {
+    margin-top: 30px;
+  }
+  ul {
+    padding-left: 20px;
+  }
+  .positive {
+    color: green;
+    font-weight: bold;
+  }
+  .negative {
+    color: red;
+    font-weight: bold;
+  }
+</style>
+
+<h2>Laporan Mingguan Katsikat</h2>
+<p><strong>Periode:</strong> {{period}}</p>
+
+<h3>🧾 Ringkasan Order</h3>
+<ul>
+  <li>
+    <strong>Total Order:</strong> {{totalOrders}}
+    <span class="{{ordersTrend}}">({{ordersChange}})</span>
+  </li>
+  <li>
+    <strong>Total Pembayaran:</strong> {{totalRevenue}}
+    <span class="{{revenueTrend}}">({{revenueChange}})</span>
+  </li>
+  <li><strong>Rata-rata per Order:</strong> {{avgOrder}}</li>
+  <li><strong>Belum Lunas:</strong> {{outstanding}}</li>
+</ul>
+
+<h3>💳 Metode Pembayaran</h3>
+<ul>
+  <li><strong>Tunai:</strong> {{cash}}</li>
+  <li><strong>Transfer:</strong> {{transfer}}</li>
+  <li><strong>QRIS:</strong> {{qris}}</li>
+</ul>
+
+<h3>📉 Keuangan</h3>
+<ul>
+  <li>
+    <strong>Pengeluaran:</strong> {{expenses}}
+    <span class="{{expenseTrend}}">({{expensesChange}})</span>
+  </li>
+  <li>
+    <strong>Profit:</strong> <span class="{{profitTrend}}">{{profit}}</span>
+  </li>
+</ul>
+
+<h3>👥 Customer & Leads</h3>
+<ul>
+  <li><strong>Customer Baru:</strong> {{customerBaru}}</li>
+  <li><strong>Leads Masuk:</strong> {{leadsNow}}</li>
+  <li><strong>Follow Up Leads:</strong> {{leadsFollowedUp}}</li>
+</ul>
+
+<h3>🧪 Treatment Terpopuler</h3>
+<ul>
+  {{topTreatments}}
+</ul>
+
+<h3>🔁 Repeat Order & Retensi</h3>
+<ul>
+  <li>
+    <strong>Repeat Order Mingguan:</strong> {{repeatWeeklyCount}} pelanggan
+  </li>
+</ul>
+
+<p>
+  <i><b>Bulan ini:</b></i>
+</p>
+<ul>
+  <li>Dari pelanggan bulan lalu: {{returnedFromLastMonth}}</li>
+  <li>Dari pelanggan 3 bulan lalu: {{returnedFrom3Months}}</li>
+  <li>Dari pelanggan 1 tahun lalu: {{returnedFrom1Year}}</li>
+  <li>Dari semua pelanggan di database: {{returnedFromAll}}</li>
+</ul>
+
+<h3>🎯 Retensi Pelanggan Bulanan</h3>
+<strong>Dalam Minggu ini: {{repeatWeeklyCount}} orang</strong>
+{{repeatWeeklyList}}
+
+<strong>Dari pelanggan bulan lalu: {{returnedFromLastMonth}} orang</strong>
+{{returnedFromLastMonthList}}
+
+<strong>Dari pelanggan 3 bulan lalu: {{returnedFrom3Months}} orang</strong>
+{{returnedFrom3MonthsList}}
+
+<p style="font-style: italic">
+  🧼 Terima kasih, semoga minggu depan lebih bersih dan lebih cuan! 💸
+</p>

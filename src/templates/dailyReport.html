@@ -1,0 +1,66 @@
+<h2>Laporan Harian Katsikat</h2>
+<h3><strong>Tanggal:</strong> {{date}}</h3>
+
+<h3>📘 Ringkasan Akun Keuangan</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>Akun</th>
+    <th>Jenis</th>
+    <th>Saldo Akhir</th>
+    <th>Masuk Hari Ini</th>
+    <th>Keluar Hari Ini</th>
+  </tr>
+  {{accountSummaryHtml}}
+</table>
+
+<h3>🧾 Ringkasan Order</h3>
+<ul>
+  <li><strong>Jumlah Order Masuk:</strong> {{totalOrders}}</li>
+  <li><strong>Total Item Masuk:</strong> {{totalItems}}</li>
+  <li><strong>Total Estimasi Pendapatan:</strong> {{estimatedRevenue}}</li>
+  <li><strong>Total Pembayaran DP:</strong> {{dpPaid}}</li>
+  <li><strong>Order Belum Bayar:</strong> {{unpaidOrders}}</li>
+</ul>
+
+<h3>💸 Pengeluaran Hari Ini ({{expensesCount}})</h3>
+<ul>
+  {{expensesListHtml}}
+</ul>
+<p><strong>Total Pengeluaran:</strong> {{expensesTotal}}</p>
+
+<h3>📊 Shift</h3>
+<ul>
+  {{shiftReportHtml}}
+</ul>
+<p><strong>Total Selisih Uang:</strong> {{totalDifferenceShift}}</p>
+
+<h3>🕑 Absensi</h3>
+<ul>
+  {{absensiListHtml}}
+</ul>
+
+<h3>💳 Transfer ke Rekening Katsikat ({{transferOrdersCount}})</h3>
+<ul>
+  {{transferOrdersHtml}}
+</ul>
+<p><strong>Total Transfer:</strong> {{transferTotal}}</p>
+
+<h3>
+  ⚠️ Order Lama Belum Dibayar 1 Bulan lalu ({{oldUnpaidListCount}} Order :
+  {{totalOldUnpaidAmount}})
+</h3>
+<ul>
+  {{unpaidOldOrdersHtml}}
+</ul>
+
+<h3>📦 Item Molor 1 Minggu Lalu ({{lateItemsCount}} Item)</h3>
+<ul>
+  {{lateItemsHtml}}
+</ul>
+
+<h3>✅ Item Selesai Kemarin ({{doneCount}} item)</h3>
+<ul>
+  {{doneListHtml}}
+</ul>
+
+<p style="font-style: italic">Semangat dan tetap bersih! 💪🧼</p>

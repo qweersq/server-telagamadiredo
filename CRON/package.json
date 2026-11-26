@@ -1,0 +1,35 @@
+{
+  "name": "notasepatu-simple-cron",
+  "version": "1.0.0",
+  "description": "Simple cron jobs for NotaSepatu using existing controllers",
+  "main": "cronBilling.js",
+  "scripts": {
+    "start": "node cronBilling.js",
+    "test-trial": "node cronBilling.js test-trial",
+    "test-billing": "node cronBilling.js test-billing",
+    "test-overdue": "node cronBilling.js test-overdue",
+    "test-membership": "node cronBilling.js test-membership",
+    "test-expired-subs": "node cronBilling.js test-expired-subs",
+    "test-ai-credit": "node cronBilling.js test-ai-credit",
+    "test-all": "node cronBilling.js test-all",
+    "last-order": "node cronLastOrderUpdate.js",
+    "campaign-sender": "node cronCampaignSender.js",
+    "test-campaign": "node testCampaignSender.js",
+    "dev": "nodemon cronBilling.js"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "moment": "^2.29.4",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "cron",
+    "billing",
+    "notasepatu",
+    "simple"
+  ],
+  "author": "NotaSepatu Team"
+}

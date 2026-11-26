@@ -1,0 +1,96 @@
+{
+  "info": {
+    "_postman_id": "invoice-digital-collection-001",
+    "name": "Invoice Digital API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Invoice by Token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/invoice/{{token}}",
+          "host": ["{{base_url}}"],
+          "path": ["invoice", "{{token}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Invoice URL by Order ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/invoice/url-by-order-id?order_id={{order_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["invoice", "url-by-order-id"],
+          "query": [
+            { "key": "order_id", "value": "{{order_id}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Invoice by Order ID (WA)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"order_id\": \"{{order_id}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/invoice/send-by-order-id",
+          "host": ["{{base_url}}"],
+          "path": ["invoice", "send-by-order-id"]
+        }
+      }
+    },
+    {
+      "name": "Update Invoice Status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"sent\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/invoice/{{token}}/status",
+          "host": ["{{base_url}}"],
+          "path": ["invoice", "{{token}}", "status"]
+        }
+      }
+    },
+    {
+      "name": "Get Invoice Access Logs",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/invoice/{{token}}/access-logs",
+          "host": ["{{base_url}}"],
+          "path": ["invoice", "{{token}}", "access-logs"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "order_id", "value": "" },
+    { "key": "admin_token", "value": "" }
+  ]
+} 

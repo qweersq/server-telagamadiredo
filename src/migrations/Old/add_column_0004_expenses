@@ -1,0 +1,17 @@
+// module.exports = {
+//   up: async (queryInterface, Sequelize) => {
+//     await queryInterface.addColumn('expenses', 'account_id', {
+//       type: Sequelize.INTEGER,
+//       allowNull: false,
+//       references: {
+//         model: 'finance_accounts',
+//         key: 'id',
+//       },
+//       onUpdate: 'CASCADE',
+//       onDelete: 'CASCADE',
+//     });
+//   },
+//   down: async (queryInterface, Sequelize) => {
+//     await queryInterface.removeColumn('expenses', 'account_id');
+//   },
+// };

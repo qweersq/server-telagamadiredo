@@ -1,0 +1,164 @@
+
+
+1. Struktur Sistem Broadcast WhatsApp
+Dari yang kamu jelaskan, ada beberapa komponen utama:
+
+Nomor WhatsApp Broadcast
+
+Ini akan berbeda dengan nomor CS utama Katsikat.
+Digunakan untuk mengirim pesan penawaran ke pelanggan secara otomatis.
+Sistem Otomatisasi Broadcast
+
+Setiap pelanggan yang pernah order dari iklan akan dicatat.
+Sistem akan secara otomatis mengirim pesan sesuai jadwal (15 hari, 30 hari, dst.).
+Jika pelanggan melakukan order, hitungan hari di-reset kembali ke hari ke-15.
+Pesan yang Dikirim
+
+Bisa berupa pesan otomatis statis (misal, "Hai! Sudah waktunya cuci sepatu lagi?")
+Bisa menggunakan AI untuk menyesuaikan pesan secara lebih personal.
+2. Strategi Database & Data Tracking
+Agar sistem bisa bekerja otomatis, kita butuh beberapa entitas/data:
+
+Tabel customer_broadcasts (Tracking pesan yang dikirim)
+
+id
+customer_id
+last_order_date
+last_broadcast_date
+next_broadcast_date
+status (active = masih dalam siklus broadcast, paused = tidak menerima lagi)
+broadcast_step (menandai sudah sampai tahap keberapa: 15 hari, 30 hari, dst.)
+Relasi dengan orders
+
+Ketika customer melakukan order baru, sistem reset broadcast_step ke 15 hari.
+Relasi dengan customers
+
+Menggunakan customer_id untuk menghubungkan broadcast dengan data pelanggan.
+3. Flow Otomatisasi & Reset
+Customer order dari iklan
+
+Sistem mencatat tanggal order di customer_broadcasts.
+Menentukan next_broadcast_date untuk 15 hari ke depan.
+Cron Job atau Worker Scheduler
+
+Setiap hari sistem mengecek pelanggan mana yang harus dikirimi broadcast.
+Mengirim pesan sesuai dengan broadcast_step.
+Jika broadcast_step sudah lebih dari 45 hari, maka terus tawarkan promo "Cuci 2 Rp 50rb" sampai mereka order.
+Reset Otomatis Setelah Order
+
+Jika pelanggan melakukan order, maka:
+broadcast_step di-reset kembali ke 15 hari.
+last_order_date diperbarui.
+4. Teknologi yang Digunakan
+Database: MySQL/PostgreSQL (untuk menyimpan jadwal & tracking broadcast)
+Worker/Job Scheduler:
+Bisa pakai cron job (Linux) untuk mengecek data setiap hari
+Atau pakai BullMQ (Redis) untuk scheduling pekerjaan
+WhatsApp API:
+Bisa pakai Meta WhatsApp Business API atau third-party API seperti Twilio/Fonnte
+AI untuk Dynamic Message:
+Bisa pakai OpenAI API atau Chatbot NLP untuk mengatur gaya bahasa yang lebih natural
+5. Contoh Skema Pengiriman Pesan
+Jika kita menggunakan WhatsApp API, kita bisa buat beberapa template pesan:
+
+Hari ke-15
+
+"Halo [Nama], gimana kabarnya? Sepatunya masih bersih atau sudah mulai kotor? Katsikat siap bantu kamu cuci sepatu lagi!"
+Tombol CTA: Chat Admin Katsikat
+Hari ke-30
+
+"Hi [Nama], hari ini ada promo spesial buat kamu! Diskon 10% untuk pencucian sepatu. Buruan pesan sekarang!"
+Hari ke-45
+
+"Khusus buat pelanggan setia Katsikat, ada diskon 20%! Jangan sampai ketinggalan. Berlaku hari ini saja!"
+Hari ke-60 & 75
+
+"Spesial untuk kamu! Promo cuci 2 sepatu cuma Rp 50rb! Yuk manfaatkan kesempatan ini!"
+
+
+
+1. Struktur Database yang Dibutuhkan
+Tabel customer_broadcasts (Tracking Status Broadcast)
+Menyimpan informasi pelanggan yang akan menerima broadcast secara berkala.
+
+Field	Tipe Data	Keterangan
+id	INT (PK)	ID unik
+customer_id	INT (FK)	ID customer dari tabel customers
+last_order_date	DATE	Tanggal terakhir customer melakukan order
+last_broadcast_date	DATE	Tanggal terakhir broadcast dikirim
+next_broadcast_date	DATE	Tanggal broadcast berikutnya
+broadcast_step	INT (default 15)	Tahap broadcast (15, 30, 45, 60, dst.)
+status	ENUM ('active', 'paused')	Status broadcast (default: active)
+Setiap kali customer order, broadcast_step di-reset kembali ke 15 hari.
+Setiap hari, sistem mengecek next_broadcast_date dan mengirimkan pesan jika sudah waktunya.
+Tabel broadcast_logs (Menyimpan Semua Log Broadcast)
+Agar kita bisa tracking setiap pesan yang dikirim.
+
+Field	Tipe Data	Keterangan
+id	INT (PK)	ID unik
+customer_id	INT (FK)	ID customer dari tabel customers
+broadcast_date	DATETIME	Waktu pesan dikirim
+message	TEXT	Isi pesan yang dikirim
+status	ENUM ('sent', 'failed')	Status pengiriman
+wa_response	TEXT (nullable)	Respon pelanggan jika ada
+Menyimpan semua pesan yang dikirim, jadi kita tahu siapa yang sudah dikontak.
+Jika ada error dalam pengiriman (status = failed), kita bisa retry.
+2. Logika Otomatisasi Broadcast
+Berikut adalah workflow sistem broadcast:
+
+1️⃣ Saat Customer Order
+✅ Sistem mencatat data ke customer_broadcasts.
+✅ broadcast_step = 15 (siap untuk pesan pertama dalam 15 hari).
+✅ next_broadcast_date diatur ke tanggal order + 15 hari.
+
+2️⃣ Cron Job Harian Mengecek Broadcast
+✅ Setiap hari, sistem mencari semua customer yang next_broadcast_date = hari ini.
+✅ Jika ada, sistem mengirim pesan WhatsApp sesuai broadcast_step.
+✅ Setelah dikirim, update:
+
+last_broadcast_date = hari ini
+broadcast_step naik (ke 30, 45, 60, dst.)
+next_broadcast_date diperbarui.
+3️⃣ Jika Customer Order Lagi
+✅ broadcast_step di-reset ke 15 hari.
+✅ next_broadcast_date = last_order_date + 15 hari.
+    
+
+
+3. Integrasi WhatsApp API
+Kita akan menggunakan WhatsApp Business API atau third-party API seperti Twilio/Fonnte untuk mengirim pesan otomatis.
+
+Pengiriman Pesan:
+
+Gunakan API untuk mengirim pesan sesuai template.
+Setiap pesan yang berhasil dikirim dicatat di broadcast_logs.
+Respon Pelanggan:
+
+Jika pelanggan membalas WA, AI atau bot otomatis akan membaca pesannya.
+Jika AI mendeteksi pelanggan tertarik, bisa kirim pesan:
+"Halo! Silakan hubungi Admin Katsikat untuk order ya! Klik link ini: wa.me/nomor_admin"
+
+4. Cron Job untuk Pengiriman Pesan
+Kita butuh job scheduler untuk menjalankan broadcast otomatis. Bisa pakai:
+
+Node.js + BullMQ (Redis) → Bisa menangani queue dengan baik.
+Cron Job (Linux) → Simpel dan bisa dijalankan setiap hari.
+
+5. Pesan WhatsApp Berdasarkan broadcast_step
+Berikut daftar pesan yang akan dikirim:
+
+Hari	Pesan
+15	"Halo [Nama], gimana kabarnya? Sepatunya masih bersih atau sudah mulai kotor? Katsikat siap bantu kamu cuci sepatu lagi!"
+30	"Hi [Nama], ada promo spesial buat kamu! Diskon 10% untuk pencucian sepatu. Buruan pesan sekarang!"
+45	"Khusus buat pelanggan setia Katsikat, ada diskon 20%! Jangan sampai ketinggalan."
+60+	"Spesial untuk kamu! Promo cuci 2 sepatu cuma Rp 50rb! Yuk manfaatkan kesempatan ini!"
+⚡ Jika sudah lebih dari 45 hari, broadcast terus mengirim promo cuci 2 Rp 50rb sampai mereka order lagi!
+
+
+
+6. Ringkasan
+✅ Tabel Database Siap
+✅ Strategi Pengiriman Pesan WA Siap
+✅ Cron Job Siap
+✅ Flow Reset Otomatis Siap
+✅ Bot Auto-Reply Langsung Arahkan ke Admin
