@@ -25,6 +25,17 @@ const CUSTOMER_UMUM_NAME = 'Pelanggan Umum';
 // Kategori F&B — hanya boleh dijual di cabang mode 'cafe' / 'mixed'.
 const PRODUCT_SERVICE_TYPES = ['Makanan', 'Minuman', 'Snack', 'Souvenir', 'Lainnya'];
 
+// `createdAt` pada model Order memakai defaultValue `sequelize.literal(...)`,
+// sehingga nilai pada instance hasil create bisa berupa objek Literal, bukan Date.
+const toValidDate = (value, fallback = new Date()) => {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? fallback : value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  }
+  return fallback;
+};
+
 const isProductServiceType = (typeService) =>
   PRODUCT_SERVICE_TYPES.includes(String(typeService || '').trim());
 
@@ -135,18 +146,32 @@ class OrderService {
       }
 
       // Create Order Details and Shoe Photos
+      const productionRouting = this.buildProductionRouting(detailTreatments, branch, newOrder.branch_id);
       await this.processOrderDetails(newOrder.id, orderProductDetails, transaction, {
         tenant_id: newOrder.tenant_id,
         branch_id: newOrder.branch_id,
         entry_date: newOrder.entry_date,
         created_by: newOrder.created_by || raw.created_by || null,
-        production_routing: this.buildProductionRouting(detailTreatments, branch, newOrder.branch_id),
+        production_routing: productionRouting,
         service_types: this.buildServiceTypeMap(detailTreatments),
         cost_prices: this.buildCostPriceMap(detailTreatments),
       });
 
       // Commit transaction
       await transaction.commit();
+
+      // Notifikasi realtime ke layar operasional cabang terkait (dapur/kasir/antrian).
+      // Non-critical: kegagalan di sini tidak boleh membatalkan order yang sudah commit.
+      this.publishOrderCreatedEvent({
+        order: newOrder,
+        payment: newPayment,
+        branch,
+        routing: productionRouting,
+        detailTreatments,
+        orderProductDetails,
+      }).catch((error) => {
+        console.error('⚠️ Gagal mengirim notifikasi order baru (non-critical):', error.message);
+      });
 
       // Trigger: Generate & save invoice token
       await InvoiceService.generateAndSaveInvoiceToken(newOrder.id);
@@ -364,6 +389,69 @@ class OrderService {
       await transaction.rollback();
       throw new Error(`Gagal membuat order: ${error.message}`);
     }
+  }
+
+  /**
+   * Susun payload notifikasi pesanan baru lalu kirim ke bus SSE.
+   *
+   * Satu order bisa menyentuh beberapa dapur sekaligus (mis. Cwie Mie ke dapur
+   * Cafe 1, Popmie tetap di Cafe 2), jadi `productionBranchIds` dikirim sebagai
+   * daftar dan klien SSE memfilter sendiri berdasarkan cabangnya.
+   */
+  static async publishOrderCreatedEvent({ order, payment, branch, routing, detailTreatments, orderProductDetails }) {
+    const OrderEventBus = require('../realtime/orderEventBus');
+
+    const treatmentById = new Map(
+      (detailTreatments || []).map((treatment) => [String(treatment.id), treatment])
+    );
+
+    const sellingBranchId = Number(order.branch_id ?? branch?.id) || null;
+
+    const items = (orderProductDetails || []).map((detail) => {
+      const treatment = treatmentById.get(String(detail.treatment_id));
+      const routedBranchId = routing?.get(String(detail.treatment_id))
+        ?? treatment?.production_branch_id
+        ?? sellingBranchId;
+      return {
+        treatment_id: Number(detail.treatment_id) || null,
+        name: treatment?.name || 'Item',
+        type_service: treatment?.type_service || null,
+        production_branch_id: Number(routedBranchId) || sellingBranchId,
+      };
+    });
+
+    const productionBranchIds = [
+      ...new Set(items.map((item) => Number(item.production_branch_id)).filter(Boolean)),
+    ];
+
+    const customer = order.customer_id
+      ? await Customer.findByPk(order.customer_id, { attributes: ['id', 'name'] })
+      : null;
+
+    const branchName =
+      branch?.name
+      || (order.branch_id
+        ? (await Branch.findByPk(order.branch_id, { attributes: ['id', 'name'] }))?.name
+        : null)
+      || null;
+
+    OrderEventBus.publishOrderCreated({
+      tenantId: Number(order.tenant_id),
+      orderId: order.id,
+      orderCode: payment?.code || null,
+      sellingBranchId,
+      sellingBranchName: branchName,
+      productionBranchIds,
+      customerId: order.customer_id || null,
+      customerName: customer?.name || null,
+      tableNumber: order.table_number || null,
+      customerNote: order.customer_note || null,
+      orderType: order.order_type || null,
+      createdBy: order.created_by || null,
+      totalAmount: Number(payment?.final_price ?? payment?.total_price ?? 0),
+      items,
+      createdAt: toValidDate(order.createdAt),
+    });
   }
 
   static async updateLeadStatus(customerId) {
