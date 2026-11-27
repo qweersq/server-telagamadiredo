@@ -14,6 +14,7 @@ class TreatmentController {
       const raw = {
         name: req.body.name,
         price: req.body.price,
+        cost_price: req.body.cost_price,
         type_item: req.body.type_item,
         type_service: req.body.type_service,
         category_id: req.body.category_id,
@@ -79,6 +80,7 @@ class TreatmentController {
         id: parseInt(req.params.id, 10),
         name: req.body.name,
         price: req.body.price,
+        cost_price: req.body.cost_price,
         type_item: req.body.type_item,
         type_service: req.body.type_service,
         category_id: req.body.category_id,

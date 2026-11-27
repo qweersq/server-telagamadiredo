@@ -44,6 +44,12 @@ const OrderDetail = sequelize.define('order_details', {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false
     },
+    cost_price: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+        defaultValue: null,
+        comment: 'Snapshot HPP per unit saat transaksi dibuat, agar laba historis tidak berubah'
+    },
     custom_price: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: true,

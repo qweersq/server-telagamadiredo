@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const {
-    sequelize, Order, OrderDetail, OrderDetailStatusLog, Treatment, Customer, Branch, Payment,
+    sequelize, Order, OrderDetail, OrderDetailStatusLog, Treatment, Customer, Branch, Payment, User,
 } = require('../models');
 
 /**
@@ -75,6 +75,8 @@ const ORDER_INCLUDE = [
     { model: Customer, as: 'customer', attributes: ['id', 'name'], required: false },
     { model: Branch, as: 'branch', attributes: ['id', 'name'], required: false },
     { model: Payment, as: 'payment', attributes: ['id', 'code'], required: false },
+    // Kasir pembuat order — dipakai di tiket dapur & invoice
+    { model: User, as: 'creator', attributes: ['id', 'name'], required: false },
 ];
 
 const DETAIL_ATTRIBUTES = [
@@ -121,6 +123,7 @@ class KitchenService {
                 entry_date: order.entry_date,
                 customer_note: order.customer_note,
                 customer_name: order.customer?.name || null,
+                cashier_name: order.creator?.name || null,
                 branch_id: order.branch_id,
                 branch_name: order.branch?.name || null,
                 created_at: order.createdAt,
@@ -245,6 +248,7 @@ class KitchenService {
                     order_type: order.order_type,
                     table_number: order.table_number,
                     customer_name: order.customer?.name || null,
+                    cashier_name: order.creator?.name || null,
                     selling_branch_id: order.branch_id,
                     selling_branch_name: order.branch?.name || null,
                     customer_note: order.customer_note || null,

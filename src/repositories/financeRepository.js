@@ -1091,6 +1091,8 @@ class FinanceRepository {
                     }
                 }));
 
+            const hppSummary = await this.getHppSummary(tenant_id, branch_id, startDate, endDate);
+
             return {
                 period: {
                     month: `${year}-${month.toString().padStart(2, '0')}`,
@@ -1107,8 +1109,17 @@ class FinanceRepository {
                     income_transactions: incomeTransactions,
                     expense_transactions: expenseTransactions,
                     membership_revenue: membershipRevenue.total_revenue,
-                    membership_count: membershipRevenue.total_members
+                    membership_count: membershipRevenue.total_members,
+                    // Laba kotor dari sisi produk (omzet item − HPP). Angka ini murni
+                    // analisa margin, TIDAK dikurangkan lagi dari net_balance karena
+                    // pembelian bahan sudah tercatat sebagai pengeluaran (cash basis).
+                    sales_revenue: hppSummary.total_revenue,
+                    hpp_total: hppSummary.total_hpp,
+                    gross_profit: hppSummary.gross_profit,
+                    gross_margin_percent: hppSummary.gross_margin_percent,
+                    hpp_is_estimated: hppSummary.is_estimated
                 },
+                hpp_breakdown: hppSummary,
                 category_breakdown: categoryBreakdown,
                 payment_method_breakdown: paymentMethodBreakdown,
                 membership_breakdown: membershipRevenue.membership_breakdown,
@@ -1184,6 +1195,99 @@ class FinanceRepository {
 
         } catch (error) {
             throw new Error(`Failed to calculate account balances: ${error.message}`);
+        }
+    }
+
+    /**
+     * Ringkasan HPP untuk Laporan Keuangan.
+     *
+     * Basis tanggal `orders.createdAt` (tanggal transaksi dibuat), bukan
+     * `entry_date` dan bukan `finance_transactions.date`. Omzet di sini adalah
+     * nilai jual item (`order_details.final_price`, sudah dipotong diskon item),
+     * sehingga **tidak sama** dengan "Uang Masuk" yang berbasis kas.
+     *
+     * `cost_price` NULL = HPP belum diisi di katalog → item tetap dihitung
+     * omzetnya tapi HPP-nya 0, dan jumlah item seperti itu dilaporkan lewat
+     * `items_without_hpp` supaya angkanya tidak dipercaya mentah-mentah.
+     */
+    static async getHppSummary(tenant_id, branch_id, startDate, endDate) {
+        try {
+            const baseJoin = (extraJoin = '') => `
+                FROM order_details od
+                INNER JOIN orders o ON od.order_id = o.id
+                ${extraJoin}
+                WHERE o.tenant_id = :tenant_id
+                  AND o.deletedAt IS NULL
+                  AND od.deletedAt IS NULL
+                  AND o.createdAt >= :startDate
+                  AND o.createdAt < DATE_ADD(:endDate, INTERVAL 1 DAY)
+                  AND (:branch_id IS NULL OR o.branch_id = :branch_id)
+            `;
+
+            const replacements = {
+                tenant_id,
+                branch_id,
+                startDate: moment(startDate).format('YYYY-MM-DD'),
+                endDate: moment(endDate).format('YYYY-MM-DD')
+            };
+
+            const totals = await sequelize.query(`
+                SELECT
+                    COALESCE(SUM(od.final_price), 0) AS total_revenue,
+                    COALESCE(SUM(od.cost_price), 0) AS total_hpp,
+                    COUNT(od.id) AS total_items,
+                    SUM(CASE WHEN od.cost_price IS NULL THEN 1 ELSE 0 END) AS items_without_hpp
+                ${baseJoin()}
+            `, { replacements, type: sequelize.QueryTypes.SELECT });
+
+            const row = totals[0] || {};
+            const totalRevenue = parseFloat(row.total_revenue || 0);
+            const totalHpp = parseFloat(row.total_hpp || 0);
+            const totalItems = parseInt(row.total_items || 0);
+            const itemsWithoutHpp = parseInt(row.items_without_hpp || 0);
+            const grossProfit = totalRevenue - totalHpp;
+
+            const byProduct = await sequelize.query(`
+                SELECT
+                    t.id AS treatment_id,
+                    t.name AS treatment_name,
+                    t.unit AS unit,
+                    COUNT(od.id) AS qty,
+                    COALESCE(SUM(od.final_price), 0) AS revenue,
+                    COALESCE(SUM(od.cost_price), 0) AS hpp,
+                    SUM(CASE WHEN od.cost_price IS NULL THEN 1 ELSE 0 END) AS items_without_hpp
+                ${baseJoin('INNER JOIN treatment t ON od.treatment_id = t.id')}
+                GROUP BY t.id, t.name, t.unit
+                ORDER BY revenue DESC
+                LIMIT 20
+            `, { replacements, type: sequelize.QueryTypes.SELECT });
+
+            return {
+                total_revenue: totalRevenue,
+                total_hpp: totalHpp,
+                gross_profit: grossProfit,
+                gross_margin_percent: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
+                total_items: totalItems,
+                items_without_hpp: itemsWithoutHpp,
+                is_estimated: itemsWithoutHpp > 0,
+                by_product: byProduct.map((item) => {
+                    const revenue = parseFloat(item.revenue || 0);
+                    const hpp = parseFloat(item.hpp || 0);
+                    return {
+                        treatment_id: item.treatment_id,
+                        treatment_name: item.treatment_name,
+                        unit: item.unit,
+                        qty: parseInt(item.qty || 0),
+                        revenue,
+                        hpp,
+                        gross_profit: revenue - hpp,
+                        gross_margin_percent: revenue > 0 ? ((revenue - hpp) / revenue) * 100 : 0,
+                        items_without_hpp: parseInt(item.items_without_hpp || 0)
+                    };
+                })
+            };
+        } catch (error) {
+            throw new Error(`Failed to get HPP summary: ${error.message}`);
         }
     }
 

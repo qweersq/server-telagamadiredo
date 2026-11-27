@@ -142,6 +142,7 @@ class OrderService {
         created_by: newOrder.created_by || raw.created_by || null,
         production_routing: this.buildProductionRouting(detailTreatments, branch, newOrder.branch_id),
         service_types: this.buildServiceTypeMap(detailTreatments),
+        cost_prices: this.buildCostPriceMap(detailTreatments),
       });
 
       // Commit transaction
@@ -402,7 +403,7 @@ class OrderService {
     const { Treatment } = require('../models');
     return Treatment.findAll({
       where: { id: treatmentIds },
-      attributes: ['id', 'name', 'type_service', 'production_mode', 'production_branch_id'],
+      attributes: ['id', 'name', 'type_service', 'production_mode', 'production_branch_id', 'cost_price'],
       transaction
     });
   }
@@ -429,6 +430,21 @@ class OrderService {
     const map = new Map();
     detailTreatments.forEach((treatment) => {
       if (treatment?.id != null) map.set(String(treatment.id), treatment.type_service || null);
+    });
+    return map;
+  }
+
+  /**
+   * Peta `treatment_id → HPP per unit` untuk snapshot ke `order_details.cost_price`.
+   * Snapshot diambil di server supaya client tidak bisa memalsukan HPP, dan supaya
+   * perubahan HPP di kemudian hari tidak mengubah laba transaksi yang sudah lewat.
+   */
+  static buildCostPriceMap(detailTreatments = []) {
+    const map = new Map();
+    detailTreatments.forEach((treatment) => {
+      if (treatment?.id == null) return;
+      const raw = treatment.cost_price;
+      map.set(String(treatment.id), raw === null || raw === undefined || raw === '' ? null : parseFloat(raw));
     });
     return map;
   }
@@ -884,6 +900,7 @@ class OrderService {
 
       const routing = context.production_routing instanceof Map ? context.production_routing : null;
       const serviceTypes = context.service_types instanceof Map ? context.service_types : null;
+      const costPrices = context.cost_prices instanceof Map ? context.cost_prices : null;
       const orderDetailsData = orderProductDetails.map((orderDetail, index) => {
         // production_branch_id selalu ditentukan server, jangan ikut payload client
         const { production_branch_id, ...detail } = orderDetail;
@@ -891,6 +908,8 @@ class OrderService {
         const typeService = serviceTypes ? serviceTypes.get(String(detail.treatment_id)) : null;
         return {
           ...detail,
+          // HPP di-snapshot dari katalog, bukan dari payload client
+          cost_price: costPrices ? (costPrices.get(String(detail.treatment_id)) ?? null) : (detail.cost_price ?? null),
           status: resolveInitialDetailStatus(typeService, detail.status ?? null),
           order_id: orderId,
           production_branch_id: routing
@@ -1280,6 +1299,7 @@ class OrderService {
           assignTagNumbers: !entryDateChanged,
           production_routing: productionRouting,
           service_types: this.buildServiceTypeMap(newDetailTreatments),
+          cost_prices: this.buildCostPriceMap(newDetailTreatments),
         });
 
         // 4b. Reissue nomor antrian kalau tanggal masuk berubah
@@ -2478,6 +2498,10 @@ class OrderService {
   }
 
   static async processUpdateOrderDetails(changes, orderId, transaction, context = {}) {
+    const routing = context.production_routing instanceof Map ? context.production_routing : null;
+    const serviceTypes = context.service_types instanceof Map ? context.service_types : null;
+    const costPrices = context.cost_prices instanceof Map ? context.cost_prices : null;
+
     if (changes.toDelete.length > 0) {
       await OrderDetailRepository.bulkDelete(changes.toDelete, transaction);
     }
@@ -2489,8 +2513,6 @@ class OrderService {
         : null;
       const seqDate = tagNumbers ? moment(context.entry_date).format('YYYY-MM-DD') : null;
 
-      const routing = context.production_routing instanceof Map ? context.production_routing : null;
-      const serviceTypes = context.service_types instanceof Map ? context.service_types : null;
       let addIndex = 0;
       for (const detail of changes.toAdd) {
         // remove id from detail
@@ -2503,6 +2525,8 @@ class OrderService {
           : (context.branch_id ?? null);
         const orderDetailData = {
           ...detail,
+          // HPP di-snapshot dari katalog saat item ditambahkan
+          ...(costPrices ? { cost_price: costPrices.get(String(detail.treatment_id)) ?? null } : {}),
           status: resolveInitialDetailStatus(
             serviceTypes ? serviceTypes.get(String(detail.treatment_id)) : null,
             detail.status ?? null
@@ -2523,8 +2547,9 @@ class OrderService {
     }
     if (changes.toUpdate.length > 0) {
       for (const detail of changes.toUpdate) {
-        // Jangan biarkan client menimpa nomor tag yang sudah tersimpan
-        const { tag_number, tag_date, ...updatePayload } = detail;
+        // Jangan biarkan client menimpa nomor tag yang sudah tersimpan,
+        // dan HPP tetap memakai snapshot saat transaksi dibuat.
+        const { tag_number, tag_date, cost_price, ...updatePayload } = detail;
         const routedBranchId = routing?.get(String(updatePayload.treatment_id));
         if (routedBranchId !== undefined) {
           updatePayload.production_branch_id = routedBranchId;

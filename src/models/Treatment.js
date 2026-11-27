@@ -15,6 +15,12 @@ const Treatment = sequelize.define('treatment', {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
     },
+    cost_price: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+        defaultValue: null,
+        comment: 'HPP bahan utama per unit (diisi manual). NULL = belum diisi'
+    },
     type_item: {
         type: DataTypes.STRING,
         allowNull: false,

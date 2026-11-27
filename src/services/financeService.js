@@ -448,7 +448,10 @@ class FinanceService {
                 ['Total Pemasukan', formatCurrency(reportData.summary?.total_income), `${reportData.summary?.income_transactions || 0} transaksi`],
                 ['Pendapatan Membership', formatCurrency(reportData.summary?.membership_revenue || 0), `${reportData.summary?.membership_count || 0} membership`],
                 ['Total Pengeluaran', formatCurrency(reportData.summary?.total_expense), `${reportData.summary?.expense_transactions || 0} transaksi`],
-                ['Laba Bersih', formatCurrency(reportData.summary?.net_balance), `${reportData.summary?.total_income ? ((reportData.summary.net_balance / reportData.summary.total_income) * 100).toFixed(1) : 0}% dari pemasukan`],
+                ['Arus Kas Bersih', formatCurrency(reportData.summary?.net_balance), `${reportData.summary?.total_income ? ((reportData.summary.net_balance / reportData.summary.total_income) * 100).toFixed(1) : 0}% dari pemasukan`],
+                ['Omzet Penjualan Item', formatCurrency(reportData.summary?.sales_revenue || 0), `${reportData.hpp_breakdown?.total_items || 0} item terjual`],
+                ['HPP (Harga Pokok)', formatCurrency(reportData.summary?.hpp_total || 0), `${reportData.hpp_breakdown?.items_without_hpp || 0} item HPP kosong`],
+                ['Laba Kotor', formatCurrency(reportData.summary?.gross_profit || 0), `${(reportData.summary?.gross_margin_percent || 0).toFixed(1)}% margin`],
                 ['Total Transaksi', (reportData.summary?.transaction_count || 0).toString(), 'Semua transaksi']
             ];
 
