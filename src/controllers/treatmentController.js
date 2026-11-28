@@ -1,6 +1,35 @@
 const TreatmentService = require('../services/treatmentService');
 const { ResponseHelper } = require('../helpers');
 
+// Dapur produksi: 'outlet' = masak di outlet penjual, 'central' = dapur outlet lain.
+// `production_branch_id` hanya bermakna saat produksi 'central'.
+const normalizeProductionFields = (body) => {
+  const modeRaw = body.production_mode;
+  const branchRaw = body.production_branch_id;
+
+  if (modeRaw === undefined && branchRaw === undefined) return {};
+
+  const productionMode = modeRaw === 'central' ? 'central' : modeRaw === 'outlet' ? 'outlet' : undefined;
+  const branchId = branchRaw === null || branchRaw === '' || branchRaw === undefined
+    ? null
+    : Number(branchRaw);
+
+  if (productionMode === 'outlet') {
+    return { production_mode: 'outlet', production_branch_id: null };
+  }
+
+  const fields = {};
+  if (productionMode) fields.production_mode = productionMode;
+  if (branchId !== undefined && Number.isFinite(branchId) && branchId > 0) {
+    fields.production_branch_id = branchId;
+    // Ada dapur spesifik berarti produksi terpusat.
+    fields.production_mode = 'central';
+  } else if (branchId === null) {
+    fields.production_branch_id = null;
+  }
+  return fields;
+};
+
 class TreatmentController {
   static async create(req, res) {
     try {
@@ -20,7 +49,8 @@ class TreatmentController {
         category_id: req.body.category_id,
         description: req.body.description,
         unit: req.body.unit,
-        tenant_id: req.user.tenant_id
+        tenant_id: req.user.tenant_id,
+        ...normalizeProductionFields(req.body)
       };
 
       if (requiresTracking !== undefined) {
@@ -85,7 +115,8 @@ class TreatmentController {
         type_service: req.body.type_service,
         category_id: req.body.category_id,
         description: req.body.description,
-        unit: req.body.unit
+        unit: req.body.unit,
+        ...normalizeProductionFields(req.body)
       };
 
       if (requiresTracking !== undefined) {
